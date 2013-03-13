@@ -104,6 +104,8 @@ void usage() {
   printf("    --dev ........... Show standard deviation in output\n");
   printf("    --min ........... Show minimum in output\n");
   printf("    --max ........... Show maximum in output\n");
+  printf("    --sum ........... Show sum in output\n");
+  printf("    --cnt ........... Show count of values in output\n");
 }
 
 /* Utility macro */
@@ -131,10 +133,10 @@ int main(int argc, char *argv[]) {
       show_min = true;
     } else if (strcmp(*argv, "--max") == 0) {
       show_max = true;
-    } else if (strcmp(*argv, "--cnt") == 0) {
-      show_cnt = true;
     } else if (strcmp(*argv, "--sum") == 0) {
       show_sum = true;
+    } else if (strcmp(*argv, "--cnt") == 0) {
+      show_cnt = true;
     } else {
       fin = fopen(*argv, "r");
       chk_exit(fin != 0, "File not found: %s", *argv);
