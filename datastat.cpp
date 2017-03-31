@@ -38,6 +38,11 @@ bool show_min = false;
 bool show_max = false;
 bool show_cnt = false;
 bool show_sum = false;
+bool show_sub = false;
+bool show_add = false;
+
+int sub_from, sub_to;
+int add_a, add_b;
 
 #if LOG_DEBUG
 #define log_noln(fmt, args...) do {	\
@@ -52,7 +57,7 @@ bool show_sum = false;
   } while (0)
 
 #define chk_exit(cond,msg, args...) do {			\
-    if (!cond) {						\
+    if (!(cond)) {						\
       fprintf(stderr, "Error: " msg "\n", ##args);		\
       exit(-1);							\
     }								\
@@ -117,6 +122,8 @@ void usage() {
   printf("    --max ........... Show maximum\n");
   printf("    --sum ........... Show sum\n");
   printf("    --cnt ........... Show count of values\n");
+  printf("    --sub a,b ....... Show difference of fields a and b\n");
+  printf("    --add a,b ....... Show addition of fields a and b\n");
 }
 
 /* Utility macro */
@@ -216,6 +223,18 @@ int main(int argc, char *argv[]) {
       show_sum = true;
     } else if (strcmp(*argv, "--cnt") == 0) {
       show_cnt = true;
+    } else if (strcmp(*argv, "--sub") == 0) {
+      --argc;  ++argv;
+      chk_exit(argc > 0, "Option --sub requires two comma-separated fields as argument");
+      chk_exit(sscanf(*argv, "%d,%d", &sub_from, &sub_to) == 2, "Option --sub requires two comma-separated fields as argument");
+      log("Parsed sub_from,sub_to: %d,%d", sub_from, sub_to);
+      show_sub = true;
+    } else if (strcmp(*argv, "--add") == 0) {
+      --argc;  ++argv;
+      chk_exit(argc > 0, "Option --add requires two comma-separated fields as argument");
+      chk_exit(sscanf(*argv, "%d,%d", &add_a, &add_b) == 2, "Option --add requires two comma-separated fields as argument");
+      log("Parsed add_a,add_b: %d,%d", add_a, add_b);
+      show_add = true;
     } else {
       fin = fopen(*argv, "r");
       chk_exit(fin != 0, "File not found: %s", *argv);
@@ -257,22 +276,33 @@ int main(int argc, char *argv[]) {
 	double d;
 	sscanf(s, "%lf", &d);                         // d now contains the double value of the read string
 	if (i >= (int)accum.v_sum.size()) {
-	  accum.v_sum.push_back(d);
-	  accum.v_sqr.push_back(d*d);
-	  accum.v_min.push_back(d);
-	  accum.v_max.push_back(d);
-          accum.v_val.push_back(vector<double>()); // TODO create a vector<double>
-          accum.v_val[i].push_back(d);             // TODO add to vector<double>
+	  if (show_sum || show_avg || show_dev)
+	    accum.v_sum.push_back(d);
+	  if (show_dev)
+	    accum.v_sqr.push_back(d*d);
+	  if (show_min)
+	    accum.v_min.push_back(d);
+	  if (show_max)
+	    accum.v_max.push_back(d);
+	  if (show_1qt || show_2qt || show_3qt) {
+	    accum.v_val.push_back(vector<double>());
+	    accum.v_val.back().push_back(d);
+	  }
 	} else {
-	  accum.v_sum[i] += d;
-	  accum.v_sqr[i] += d*d;
-	  accum.v_min[i] = min(accum.v_min[i], d);
-	  accum.v_max[i] = max(accum.v_max[i], d);
-          accum.v_val[i].push_back(d);             // TODO add to vector<double>
+	  if (show_sum || show_avg || show_dev)
+	    accum.v_sum[i] += d;
+	  if (show_dev)
+	    accum.v_sqr[i] += d*d;
+	  if (show_min)
+	    accum.v_min[i] = min(accum.v_min[i], d);
+	  if (show_max)
+	    accum.v_max[i] = max(accum.v_max[i], d);
+	  if (show_1qt || show_2qt || show_3qt)
+	    accum.v_val[i].push_back(d);
 	}
-	++accum.num;
       }
-    } else {                                         // there are key fields, so we need to use a portion of the data
+      ++accum.num;
+    } else {
       vector<string> key;
       for (int i = 0; i < (int)values.size(); ++i) {
 	if (is_key_field(i)) {
@@ -350,7 +380,7 @@ int main(int argc, char *argv[]) {
 
   if (key_fields == 0) {
     const char *sep = "";
-    double firstQuantile; // TODO
+    double firstQuantile;
     double median;
     double thirdQuantile;
     for (int i = 0; i < (int)accum.v_sum.size(); ++i) {
@@ -361,7 +391,7 @@ int main(int argc, char *argv[]) {
       if (show_dev) {
 	printf_sep("%g", sqrt(accum.v_sqr[i]/accum.num - avg*avg));
       }
-      if (show_1qt||show_2qt||show_3qt) {                   // TODO
+      if (show_1qt || show_2qt || show_3qt) {                   // TODO
         int  medianPosLow;
         int  medianPosHigh;
         int  firstQuantilePosLow;
@@ -415,6 +445,16 @@ int main(int argc, char *argv[]) {
     if (show_cnt) {
       printf_sep("%lu", accum.num);
     }
+    if (show_sub) {
+      chk_exit(sub_from >= 1 && sub_from <= (int)accum.v_sum.size(), "First arg of --sub out of range");
+      chk_exit(sub_to >= 1 && sub_to <= (int)accum.v_sum.size(), "Second arg of --sub out of range");
+      printf_sep("%g", accum.v_sum[sub_from - 1] - accum.v_sum[sub_to - 1]);
+    }
+    if (show_add) {
+      chk_exit(add_a >= 1 && add_a <= (int)accum.v_sum.size(), "First arg of --add out of range");
+      chk_exit(add_b >= 1 && add_b <= (int)accum.v_sum.size(), "Second arg of --add out of range");
+      printf_sep("%g", accum.v_sum[add_a - 1] + accum.v_sum[add_b - 1]);
+    }
     printf("\n");
   } else {
     map<vector<string>, record>::const_iterator it;
@@ -435,7 +475,7 @@ int main(int argc, char *argv[]) {
 	  ++key_id;
 	} else {
 	  double avg = r.v_sum[non_key_id] / r.num;
-          double firstQuantile; // TODO
+          double firstQuantile;
           double median;
           double thirdQuantile;
 	  if (show_avg) {
@@ -444,7 +484,7 @@ int main(int argc, char *argv[]) {
 	  if (show_dev) {
 	    printf_sep("%g", sqrt(r.v_sqr[non_key_id]/r.num - avg*avg));
 	  }
-          if (show_1qt||show_2qt||show_3qt) {                   // TODO
+          if (show_1qt || show_2qt || show_3qt) {
             int medianPosLow;
             int medianPosHigh;
             int firstQuantilePosLow;
@@ -459,13 +499,13 @@ int main(int argc, char *argv[]) {
             log_noln("   v_val (sorted): "); log_values(alldata);
             log("      size: %ld", alldata.size());
 
-            // 2nd quantile
+            // 2nd quartile
             isEvenNumberOfDataPoints = calculateMedian(alldata, &median, &medianPosLow, &medianPosHigh);
             if (isEvenNumberOfDataPoints) {
                medianPosHigh--;
                medianPosLow++;
             }
-            {// 1st quantile (including median... so use medianPosHigh)
+            {// 1st quartile (including median... so use medianPosHigh)
                vector<double> first = slice(alldata, 0, medianPosHigh+1);
                calculateMedian(first, &firstQuantile, &firstQuantilePosLow, &firstQuantilePosHigh);
             }
@@ -473,19 +513,19 @@ int main(int argc, char *argv[]) {
                firstQuantilePosLow--;
                firstQuantilePosHigh++;
             }
-            { // 3rd quantile (including median... so use medianPosHigh)
+            { // 3rd quartile (including median... so use medianPosHigh)
                vector<double> third = slice(alldata, medianPosLow, alldata.size());
                calculateMedian(third, &thirdQuantile, &thirdQuantilePosLow, &thirdQuantilePosHigh);
             }
           }
           if (show_1qt) {
-	    printf_sep("%g", firstQuantile); // TODO
+	    printf_sep("%g", firstQuantile);
           }
           if (show_2qt) {
-	    printf_sep("%g", median);        // TODO
+	    printf_sep("%g", median);
           }
           if (show_3qt) {
-	    printf_sep("%g", thirdQuantile); // TODO
+	    printf_sep("%g", thirdQuantile);
           }
 	  if (show_min) {
 	    printf_sep("%g", r.v_min[non_key_id]);
