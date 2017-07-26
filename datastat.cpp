@@ -40,6 +40,7 @@ bool show_cnt = false;
 bool show_sum = false;
 bool show_sub = false;
 bool show_add = false;
+bool show_header = true;
 
 int sub_from, sub_to;
 int add_a, add_b;
@@ -114,6 +115,7 @@ void usage() {
   printf("  Options:\n");
   printf("    -h|--help ....... This help message\n");
   printf("    --no-avg ........ Suppress average\n");
+  printf("    -nh|--no-header . Suppress header line\n");
   printf("    --dev ........... Show standard deviation\n");
   printf("    --1qt ........... Show first quartile (include median)\n");
   printf("    --2qt|--med ..... Show second quartile (i.e. median)\n");
@@ -207,6 +209,8 @@ int main(int argc, char *argv[]) {
       log("Parsed key_fields: %ld", key_fields);
     } else if (strcmp(*argv, "--no-avg") == 0) {
       show_avg = false;
+    } else if (strcmp(*argv, "-nh") == 0 || strcmp(*argv, "--no-header") == 0) {
+      show_header = false;
     } else if (strcmp(*argv, "--dev") == 0) {
       show_dev = true;
     } else if (strcmp(*argv, "--1qt") == 0) {
@@ -275,7 +279,7 @@ int main(int argc, char *argv[]) {
 	const char *s = values[i].c_str();
 	double d;
 	sscanf(s, "%lf", &d);                         // d now contains the double value of the read string
-	if (i >= (int)accum.v_sum.size()) {
+	if (accum.num == 0) {
 	  if (show_sum || show_avg || show_dev)
 	    accum.v_sum.push_back(d);
 	  if (show_dev)
@@ -322,7 +326,7 @@ int main(int argc, char *argv[]) {
 	  double d;
 	  chk_exit(sscanf(s, "%lf", &d) == 1, "Couldn't parse number");
 	  log("      non_key_id=%d, r.v_sum.size()=%lu", non_key_id, r.v_sum.size());
-	  if (non_key_id >= (int)r.v_sum.size()) {
+	  if (r.num == 0) {
 	    r.v_sum.push_back(d);
 	    log("         Pushed back: %g", d);
 	    r.v_sqr.push_back(d*d);
@@ -348,47 +352,55 @@ int main(int argc, char *argv[]) {
   }
 
   log("end of reading and processing file... now output final info");
-  printf("#");
-  if (show_avg) {
-     printf(" avg");
+  if (show_header)  {
+    printf("#");
+    if (show_avg) {
+      printf(" avg");
+    }
+    if (show_dev) {
+      printf(" dev");
+    }
+    if (show_1qt) {
+      printf(" 1qt");
+    }
+    if (show_2qt) {
+      printf(" 2qt");
+    }
+    if (show_3qt) {
+      printf(" 3qt");
+    }
+    if (show_min) {
+      printf(" min");
+    }
+    if (show_max) {
+      printf(" max");
+    }
+    if (show_sum) {
+      printf(" sum");
+    }
+    if (show_cnt) {
+      printf(" cnt");
+    }
+    printf("\n");
   }
-  if (show_dev) {
-     printf(" dev");
-  }
-  if (show_1qt) {
-     printf(" 1qt");
-  }
-  if (show_2qt) {
-     printf(" 2qt");
-  }
-  if (show_3qt) {
-     printf(" 3qt");
-  }
-  if (show_min) {
-     printf(" min");
-  }
-  if (show_max) {
-     printf(" max");
-  }
-  if (show_sum) {
-     printf(" sum");
-  }
-  if (show_cnt) {
-     printf(" cnt");
-  }
-  printf("\n");
 
   if (key_fields == 0) {
     const char *sep = "";
     double firstQuantile;
     double median;
     double thirdQuantile;
-    for (int i = 0; i < (int)accum.v_sum.size(); ++i) {
-      double avg = accum.v_sum[i] / accum.num;
+    int sz = 0;
+    if (show_sum || show_avg || show_dev) sz = accum.v_sum.size();
+    else if (show_max) sz = accum.v_max.size();
+    else if (show_min) sz = accum.v_min.size();
+    else if (show_1qt || show_2qt || show_3qt) sz = accum.v_val.size();
+    for (int i = 0; i < sz; ++i) {
       if (show_avg) {
+	double avg = accum.v_sum[i] / accum.num;
 	printf_sep("%g", avg);
       }
       if (show_dev) {
+	double avg = accum.v_sum[i] / accum.num;
 	printf_sep("%g", sqrt(accum.v_sqr[i]/accum.num - avg*avg));
       }
       if (show_1qt || show_2qt || show_3qt) {                   // TODO
@@ -474,14 +486,15 @@ int main(int argc, char *argv[]) {
 	  printf_sep("%s", key[key_id].c_str());
 	  ++key_id;
 	} else {
-	  double avg = r.v_sum[non_key_id] / r.num;
           double firstQuantile;
           double median;
           double thirdQuantile;
 	  if (show_avg) {
+	    double avg = r.v_sum[non_key_id] / r.num;
 	    printf_sep("%g", avg);
 	  }
 	  if (show_dev) {
+	    double avg = r.v_sum[non_key_id] / r.num;
 	    printf_sep("%g", sqrt(r.v_sqr[non_key_id]/r.num - avg*avg));
 	  }
           if (show_1qt || show_2qt || show_3qt) {
