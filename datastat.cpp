@@ -50,7 +50,7 @@ int add_a, add_b;
     printf(fmt, ##args);	\
   } while (0)
 #else
-#define log_noln(fmt, args...)
+#define log_noln(fmt, args...) do {  } while(0)
 #endif
 
 #define log(fmt, args...) do {	\
@@ -72,9 +72,8 @@ static bool is_key_field(int f) {
 static void log_values(vector<double> const & values) {
   vector<double>::const_iterator vit;
   for (vit = values.begin(); vit != values.end(); ++vit) {
-    if (vit - values.begin() > 0) {
+    if (vit - values.begin() > 0)
       log_noln(" ");
-    }
     log_noln("%g", *vit);
   }
   log("");
