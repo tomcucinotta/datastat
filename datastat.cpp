@@ -72,8 +72,9 @@ static bool is_key_field(int f) {
 static void log_values(vector<double> const & values) {
   vector<double>::const_iterator vit;
   for (vit = values.begin(); vit != values.end(); ++vit) {
-    if (vit - values.begin() > 0)
+    if (vit - values.begin() > 0) {
       log_noln(" ");
+    }
     log_noln("%g", *vit);
   }
   log("");
@@ -177,7 +178,8 @@ bool calculateMedian(vector<double> vals, double* median, int* medianPosLow, int
    }
    log("      medianPosLow (before): %d", *medianPosLow);
    log("      medianPosHigh(before): %d", *medianPosHigh);
-   for (size_t ii = *medianPosLow - 1; ii >= 0; ii--) {
+   for (size_t ii = *medianPosLow - 1; ; ii--) {
+
       if (vals[ii] == *median) {
          *medianPosLow = ii;
       } else {
