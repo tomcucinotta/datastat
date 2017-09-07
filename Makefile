@@ -4,7 +4,7 @@ CXXFLAGS=-O3 -Wall -Wextra
 #CXXFLAGS=-g -Wall -Wextra
 
 datastat: datastat.o
-	g++ -o $@ $^ -lreadline
+	g++ -o $@ $^
 
 tests: datastat test01 test02
 
