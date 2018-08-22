@@ -200,23 +200,27 @@ bool calculateMedian(vector<double> vals, double* median, int* medianPosLow, int
    return isEvenNumberOfDataPoints;
 }
 
-static double non_nan_or(double val, double def) {
+static double non_nan_or(double val, double orig1, double orig2) {
+  log("non_nan_or: val=%g, orig1=%g, orig2=%g, isnan(val)=%d", val, orig1, orig2, isnan(val));
   if (!isnan(val))
     return val;
-  return def;
+  else if (!isnan(orig1))
+    return orig1;
+  return orig2;
 }
 
 // TODO: we should count non-NaN per column, as they could be different!
 //       now this is computing average & std-dev assuming number of values == number of rows
 static void accumulate_on(record & accum, vector<string> & values) {
+  log("      v_sum[] size: %lu", accum.v_sum.size());
+  log_noln("      Retrieved values: ");
+  log_values(accum.v_sum);
   int non_key_id = 0;
   for (int i = 0; i < (int)values.size(); ++i) {
     if (!is_key_field(i)) {
       const char *s = values[i].c_str();
       double d = NAN;
       chk_exit(sscanf(s, "%lf", &d) == 1 || use_nan, "Couldn't parse number!");
-      if (isnan(d))
-	d = 0.0;
       log("      non_key_id=%d, accum.v_sum.size()=%lu", non_key_id, accum.v_sum.size());
       // d now contains the double value of the read string
       if (accum.num == 0) {
@@ -230,27 +234,146 @@ static void accumulate_on(record & accum, vector<string> & values) {
 	  accum.v_min.push_back(d);
 	if (show_max)
 	  accum.v_max.push_back(d);
-	if (show_1qt || show_2qt || show_3qt) {
+	// if use_nan is needed to correctly count # of non-NaN values in stats
+	if (use_nan || show_1qt || show_2qt || show_3qt) {
 	  accum.v_val.push_back(vector<double>());
-	  if (!isnan(d))
+	  if (!isnan(d)) {
+	    log("pushing back: %g", d);
 	    accum.v_val.back().push_back(d);
+	  }
 	}
       } else {
-	if (show_sum || show_avg || show_dev)
-	  accum.v_sum[non_key_id] = non_nan_or(accum.v_sum[non_key_id] + d, d);
-	if (show_dev)
-	  accum.v_sqr[non_key_id] = non_nan_or(accum.v_sqr[non_key_id] + d*d, d*d);
-	if (show_min)
-	  accum.v_min[non_key_id] = non_nan_or(min(accum.v_min[non_key_id], d), d);
-	if (show_max)
-	  accum.v_max[non_key_id] = non_nan_or(max(accum.v_max[non_key_id], d), d);
-	if (!isnan(d) && (show_1qt || show_2qt || show_3qt))
+	if (show_sum || show_avg || show_dev) {
+	  double v = accum.v_sum[non_key_id] + d;
+	  accum.v_sum[non_key_id] = non_nan_or(v, accum.v_sum[non_key_id], d);
+	}
+	if (show_dev) {
+	  double v = accum.v_sqr[non_key_id] + d*d;
+	  accum.v_sqr[non_key_id] = non_nan_or(v, accum.v_sqr[non_key_id], d*d);
+	}
+	if (show_min) {
+	  double v = min(accum.v_min[non_key_id], d);
+	  accum.v_min[non_key_id] = non_nan_or(v, accum.v_min[non_key_id], d);
+	}
+	if (show_max) {
+	  double v = max(accum.v_max[non_key_id], d);
+	  accum.v_max[non_key_id] = non_nan_or(v, accum.v_max[non_key_id], d);
+	}
+	if (!isnan(d) && (use_nan || show_1qt || show_2qt || show_3qt))
 	  accum.v_val[non_key_id].push_back(d);
       }
+      ++non_key_id;
     }
-    ++non_key_id;
   }
   ++accum.num;
+
+  log_noln("      Finalized values: ");
+  log_values(accum.v_sum);
+}
+
+static void show(vector<string> const & key, record const & r) {
+  log_noln("   v_sum: ");  log_values(r.v_sum);
+  log_noln("   v_sqr: ");  log_values(r.v_sqr);
+  log_noln("   v_min: ");  log_values(r.v_min);
+  log_noln("   v_max: ");  log_values(r.v_max);
+  int key_id = 0;
+  int non_key_id = 0;
+  const char *sep = "";
+  int sz = 0;
+  if (show_sum || show_avg || show_dev)
+    sz = r.v_sum.size();
+  else if (show_max)
+    sz = r.v_max.size();
+  else if (show_min)
+    sz = r.v_min.size();
+  else if (show_1qt || show_2qt || show_3qt)
+    sz = r.v_val.size();
+  for (int i = 0; i < int(key.size() + sz); ++i) {
+    if (is_key_field(i)) {
+      printf_sep("%s", key[key_id].c_str());
+      ++key_id;
+      continue;
+    }
+    double firstQuantile;
+    double median;
+    double thirdQuantile;
+    unsigned long num = r.num;
+    if (use_nan) {
+      chk_exit(non_key_id < (int)r.v_val.size(), "Internal error!");
+      log("non_key_id=%d, r.v_val.size()=%lu\n", non_key_id, r.v_val.size());
+      num = r.v_val[non_key_id].size();
+    }
+    log("   num: %lu, r.num: %lu", num, r.num);
+    if (show_avg) {
+      double avg = r.v_sum[non_key_id] / num;
+      printf_sep("%g", avg);
+    }
+    if (show_dev) {
+      double avg = r.v_sum[non_key_id] / num;
+      printf_sep("%g", sqrt(r.v_sqr[non_key_id] / num - avg*avg));
+    }
+    if (show_1qt || show_2qt || show_3qt) {
+      int medianPosLow;
+      int medianPosHigh;
+      int firstQuantilePosLow;
+      int firstQuantilePosHigh;
+      int thirdQuantilePosLow;
+      int thirdQuantilePosHigh;
+      bool isEvenNumberOfDataPoints;
+      vector<double> alldata = slice(r.v_val[non_key_id], 0);
+      log_noln("   v_val         : "); log_values(alldata);
+      // not sure exactly how to sort without copying data
+      sort(alldata.begin(), alldata.end());
+      log_noln("   v_val (sorted): "); log_values(alldata);
+      log("      size: %ld", alldata.size());
+
+      // 2nd quartile
+      isEvenNumberOfDataPoints = calculateMedian(alldata, &median, &medianPosLow, &medianPosHigh);
+      if (isEvenNumberOfDataPoints) {
+	medianPosHigh--;
+	medianPosLow++;
+      }
+      {// 1st quartile (including median... so use medianPosHigh)
+	vector<double> first = slice(alldata, 0, medianPosHigh+1);
+	calculateMedian(first, &firstQuantile, &firstQuantilePosLow, &firstQuantilePosHigh);
+      }
+      if (isEvenNumberOfDataPoints) {
+	firstQuantilePosLow--;
+	firstQuantilePosHigh++;
+      }
+      { // 3rd quartile (including median... so use medianPosHigh)
+	vector<double> third = slice(alldata, medianPosLow, alldata.size());
+	calculateMedian(third, &thirdQuantile, &thirdQuantilePosLow, &thirdQuantilePosHigh);
+      }
+    }
+    if (show_1qt) {
+      printf_sep("%g", firstQuantile);
+    }
+    if (show_2qt) {
+      printf_sep("%g", median);
+    }
+    if (show_3qt) {
+      printf_sep("%g", thirdQuantile);
+    }
+    if (show_min) {
+      printf_sep("%g", r.v_min[non_key_id]);
+    }
+    if (show_max) {
+      printf_sep("%g", r.v_max[non_key_id]);
+    }
+    if (show_sum) {
+      printf_sep("%g", r.v_sum[non_key_id]);
+    }
+    if (use_nan && show_cnt) {
+      printf_sep("%lu", num);
+    }
+
+    ++non_key_id;
+  }
+  if (!use_nan && show_cnt) {
+    printf_sep("%lu", r.num);
+  }
+  printf("\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -347,9 +470,6 @@ int main(int argc, char *argv[]) {
 	}
       }
       record &r = accum_map[key];
-      log("      v_sum[] size: %lu", r.v_sum.size());
-      log_noln("      Retrieved values: ");
-      log_values(r.v_sum);
       accumulate_on(r, values);
     }
     ++num;
@@ -389,178 +509,17 @@ int main(int argc, char *argv[]) {
   }
 
   if (key_fields == 0) {
-    const char *sep = "";
-    double firstQuantile;
-    double median;
-    double thirdQuantile;
-    int sz = 0;
-    if (show_sum || show_avg || show_dev) sz = accum.v_sum.size();
-    else if (show_max) sz = accum.v_max.size();
-    else if (show_min) sz = accum.v_min.size();
-    else if (show_1qt || show_2qt || show_3qt) sz = accum.v_val.size();
-    for (int i = 0; i < sz; ++i) {
-      if (show_avg) {
-	double avg = accum.v_sum[i] / accum.num;
-	printf_sep("%g", avg);
-      }
-      if (show_dev) {
-	double avg = accum.v_sum[i] / accum.num;
-	printf_sep("%g", sqrt(accum.v_sqr[i]/accum.num - avg*avg));
-      }
-      if (show_1qt || show_2qt || show_3qt) {                   // TODO
-        int  medianPosLow;
-        int  medianPosHigh;
-        int  firstQuantilePosLow;
-        int  firstQuantilePosHigh;
-        int  thirdQuantilePosLow;
-        int  thirdQuantilePosHigh;
-        bool isEvenNumberOfDataPoints;
-        log_noln("   v_val         : "); log_values(accum.v_val[i]);
-        sort(accum.v_val[i].begin(), accum.v_val[i].end());
-        log_noln("   v_val (sorted): "); log_values(accum.v_val[i]);
-        log("      size: %ld", accum.v_val[i].size());
-
-        // 2nd quantile
-        isEvenNumberOfDataPoints = calculateMedian(accum.v_val[i], &median, &medianPosLow, &medianPosHigh);
-        if (isEvenNumberOfDataPoints) {
-           medianPosHigh--;
-           medianPosLow++;
-        }
-        {// 1st quantile (including median... so use medianPosHigh)
-           vector<double> first = slice(accum.v_val[i], 0, medianPosHigh+1);
-           isEvenNumberOfDataPoints = calculateMedian(first, &firstQuantile, &firstQuantilePosLow, &firstQuantilePosHigh);
-        }
-        if (isEvenNumberOfDataPoints) {
-           firstQuantilePosLow--;
-           firstQuantilePosHigh++;
-        }
-        { // 3rd quantile (including median... so use medianPosHigh)
-           vector<double> third = slice(accum.v_val[i], medianPosLow, accum.v_val[i].size());
-           isEvenNumberOfDataPoints = calculateMedian(third, &thirdQuantile, &thirdQuantilePosLow, &thirdQuantilePosHigh);
-        }
-      }
-      if (show_1qt) {
-	printf_sep("%g", firstQuantile); // TODO
-      }
-      if (show_2qt) {
-	printf_sep("%g", median);        // TODO
-      }
-      if (show_3qt) {
-	printf_sep("%g", thirdQuantile); // TODO
-      }
-      if (show_min) {
-	printf_sep("%g", accum.v_min[i]);
-      }
-      if (show_max) {
-	printf_sep("%g", accum.v_max[i]);
-      }
-      if (show_sum) {
-	printf_sep("%g", accum.v_sum[i]);
-      }
-    }
-    if (show_cnt) {
-      printf_sep("%lu", accum.num);
-    }
-    if (show_sub) {
-      chk_exit(sub_from >= 1 && sub_from <= (int)accum.v_sum.size(), "First arg of --sub out of range");
-      chk_exit(sub_to >= 1 && sub_to <= (int)accum.v_sum.size(), "Second arg of --sub out of range");
-      printf_sep("%g", accum.v_sum[sub_from - 1] - accum.v_sum[sub_to - 1]);
-    }
-    if (show_add) {
-      chk_exit(add_a >= 1 && add_a <= (int)accum.v_sum.size(), "First arg of --add out of range");
-      chk_exit(add_b >= 1 && add_b <= (int)accum.v_sum.size(), "Second arg of --add out of range");
-      printf_sep("%g", accum.v_sum[add_a - 1] + accum.v_sum[add_b - 1]);
-    }
-    printf("\n");
+    // use an empty key in this case
+    vector<string> key;
+    show(key, accum);
   } else {
     map<vector<string>, record>::const_iterator it;
     // iterate over each "key"
     for (it = accum_map.begin(); it != accum_map.end(); ++it) {
       vector<string> const & key = it->first;
       record const & r = it->second;
-      log_noln("   v_sum: ");  log_values(r.v_sum);
-      log_noln("   v_sqr: ");  log_values(r.v_sqr);
-      log_noln("   v_min: ");  log_values(r.v_min);
-      log_noln("   v_max: ");  log_values(r.v_max);
-      int key_id = 0;
-      int non_key_id = 0;
-      const char *sep = "";
-      for (int i = 0; i < int(key.size() + r.v_sum.size()); ++i) {
-	if (is_key_field(i)) {
-	  printf_sep("%s", key[key_id].c_str());
-	  ++key_id;
-	} else {
-          double firstQuantile;
-          double median;
-          double thirdQuantile;
-	  if (show_avg) {
-	    double avg = r.v_sum[non_key_id] / r.num;
-	    printf_sep("%g", avg);
-	  }
-	  if (show_dev) {
-	    double avg = r.v_sum[non_key_id] / r.num;
-	    printf_sep("%g", sqrt(r.v_sqr[non_key_id]/r.num - avg*avg));
-	  }
-          if (show_1qt || show_2qt || show_3qt) {
-            int medianPosLow;
-            int medianPosHigh;
-            int firstQuantilePosLow;
-            int firstQuantilePosHigh;
-            int thirdQuantilePosLow;
-            int thirdQuantilePosHigh;
-            bool isEvenNumberOfDataPoints;
-            vector<double> alldata = slice(r.v_val[non_key_id], 0);
-            log_noln("   v_val         : "); log_values(alldata);
-            // not sure exactly how to sort without copying data
-            sort(alldata.begin(), alldata.end());
-            log_noln("   v_val (sorted): "); log_values(alldata);
-            log("      size: %ld", alldata.size());
-
-            // 2nd quartile
-            isEvenNumberOfDataPoints = calculateMedian(alldata, &median, &medianPosLow, &medianPosHigh);
-            if (isEvenNumberOfDataPoints) {
-               medianPosHigh--;
-               medianPosLow++;
-            }
-            {// 1st quartile (including median... so use medianPosHigh)
-               vector<double> first = slice(alldata, 0, medianPosHigh+1);
-               calculateMedian(first, &firstQuantile, &firstQuantilePosLow, &firstQuantilePosHigh);
-            }
-            if (isEvenNumberOfDataPoints) {
-               firstQuantilePosLow--;
-               firstQuantilePosHigh++;
-            }
-            { // 3rd quartile (including median... so use medianPosHigh)
-               vector<double> third = slice(alldata, medianPosLow, alldata.size());
-               calculateMedian(third, &thirdQuantile, &thirdQuantilePosLow, &thirdQuantilePosHigh);
-            }
-          }
-          if (show_1qt) {
-	    printf_sep("%g", firstQuantile);
-          }
-          if (show_2qt) {
-	    printf_sep("%g", median);
-          }
-          if (show_3qt) {
-	    printf_sep("%g", thirdQuantile);
-          }
-	  if (show_min) {
-	    printf_sep("%g", r.v_min[non_key_id]);
-	  }
-	  if (show_max) {
-	    printf_sep("%g", r.v_max[non_key_id]);
-	  }
-	  if (show_sum) {
-	    printf_sep("%g", r.v_sum[non_key_id]);
-	  }
-
-	  ++non_key_id;
-	}
-      }
-      if (show_cnt) {
-	printf_sep("%lu", r.num);
-      }
-      printf("\n");
+      show(key, r);
     }
   }
+  fclose(fin);
 }
