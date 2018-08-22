@@ -69,12 +69,13 @@ static bool is_key_field(int f) {
 
 static void log_values(vector<double> const & values) {
   vector<double>::const_iterator vit;
+  log_noln("[");
   for (vit = values.begin(); vit != values.end(); ++vit) {
     if (vit - values.begin() > 0)
-      log_noln(" ");
+      log_noln(", ");
     log_noln("%g", *vit);
   }
-  log("");
+  log("]");
 }
 
 struct record {
