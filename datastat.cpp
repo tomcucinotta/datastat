@@ -40,6 +40,7 @@ bool show_sum = false;
 bool show_sub = false;
 bool show_add = false;
 bool show_header = true;
+bool use_nan = false;
 
 int sub_from, sub_to;
 int add_a, add_b;
@@ -126,6 +127,7 @@ void usage() {
   printf("    --cnt ........... Show count of values\n");
   printf("    --sub a,b ....... Show difference of fields a and b\n");
   printf("    --add a,b ....... Show addition of fields a and b\n");
+  printf("    --use-nan ....... Use NaN to tolerate non-numbers in input\n");
 }
 
 /* Utility macro */
@@ -197,6 +199,57 @@ bool calculateMedian(vector<double> vals, double* median, int* medianPosLow, int
    return isEvenNumberOfDataPoints;
 }
 
+static double non_nan_or(double val, double def) {
+  if (!isnan(val))
+    return val;
+  return def;
+}
+
+// TODO: we should count non-NaN per column, as they could be different!
+//       now this is computing average & std-dev assuming number of values == number of rows
+static void accumulate_on(record & accum, vector<string> & values) {
+  int non_key_id = 0;
+  for (int i = 0; i < (int)values.size(); ++i) {
+    if (!is_key_field(i)) {
+      const char *s = values[i].c_str();
+      double d = NAN;
+      chk_exit(sscanf(s, "%lf", &d) == 1 || use_nan, "Couldn't parse number!");
+      log("      non_key_id=%d, r.v_sum.size()=%lu", non_key_id, r.v_sum.size());
+      // d now contains the double value of the read string
+      if (accum.num == 0) {
+	// BEWARE: we might be pushing NaN here, it's needed to count the correct number of accumulators
+	//         if NaNs happen on the first line
+	if (show_sum || show_avg || show_dev)
+	  accum.v_sum.push_back(d);
+	if (show_dev)
+	  accum.v_sqr.push_back(d*d);
+	if (show_min)
+	  accum.v_min.push_back(d);
+	if (show_max)
+	  accum.v_max.push_back(d);
+	if (show_1qt || show_2qt || show_3qt) {
+	  accum.v_val.push_back(vector<double>());
+	  if (!isnan(d))
+	    accum.v_val.back().push_back(d);
+	}
+      } else {
+	if (show_sum || show_avg || show_dev)
+	  accum.v_sum[non_key_id] = non_nan_or(accum.v_sum[non_key_id] + d, d);
+	if (show_dev)
+	  accum.v_sqr[non_key_id] = non_nan_or(accum.v_sqr[non_key_id] + d*d, d*d);
+	if (show_min)
+	  accum.v_min[non_key_id] = non_nan_or(min(accum.v_min[non_key_id], d), d);
+	if (show_max)
+	  accum.v_max[non_key_id] = non_nan_or(max(accum.v_max[non_key_id], d), d);
+	if (!isnan(d) && (show_1qt || show_2qt || show_3qt))
+	  accum.v_val[non_key_id].push_back(d);
+      }
+    }
+    ++non_key_id;
+  }
+  ++accum.num;
+}
+
 int main(int argc, char *argv[]) {
   --argc;  ++argv;
   while (argc > 0) {
@@ -240,6 +293,8 @@ int main(int argc, char *argv[]) {
       chk_exit(sscanf(*argv, "%d,%d", &add_a, &add_b) == 2, "Option --add requires two comma-separated fields as argument");
       log("Parsed add_a,add_b: %d,%d", add_a, add_b);
       show_add = true;
+    } else if (strcmp(*argv, "--use-nan") == 0) {
+      use_nan = true;
     } else {
       fin = fopen(*argv, "r");
       chk_exit(fin != 0, "File not found: %s", *argv);
@@ -276,37 +331,7 @@ int main(int argc, char *argv[]) {
     free(line);
 
     if (key_fields == 0) {                            // there are no key fields, so we use all data
-      for (int i = 0; i < (int)values.size(); ++i) {
-	const char *s = values[i].c_str();
-	double d;
-	sscanf(s, "%lf", &d);                         // d now contains the double value of the read string
-	if (accum.num == 0) {
-	  if (show_sum || show_avg || show_dev)
-	    accum.v_sum.push_back(d);
-	  if (show_dev)
-	    accum.v_sqr.push_back(d*d);
-	  if (show_min)
-	    accum.v_min.push_back(d);
-	  if (show_max)
-	    accum.v_max.push_back(d);
-	  if (show_1qt || show_2qt || show_3qt) {
-	    accum.v_val.push_back(vector<double>());
-	    accum.v_val.back().push_back(d);
-	  }
-	} else {
-	  if (show_sum || show_avg || show_dev)
-	    accum.v_sum[i] += d;
-	  if (show_dev)
-	    accum.v_sqr[i] += d*d;
-	  if (show_min)
-	    accum.v_min[i] = min(accum.v_min[i], d);
-	  if (show_max)
-	    accum.v_max[i] = max(accum.v_max[i], d);
-	  if (show_1qt || show_2qt || show_3qt)
-	    accum.v_val[i].push_back(d);
-	}
-      }
-      ++accum.num;
+      accumulate_on(accum, values);
     } else {
       vector<string> key;
       for (int i = 0; i < (int)values.size(); ++i) {
@@ -319,35 +344,7 @@ int main(int argc, char *argv[]) {
       log("      v_sum[] size: %lu", r.v_sum.size());
       log_noln("      Retrieved values: ");
       log_values(r.v_sum);
-      int non_key_id = 0;
-      for (int i = 0; i < (int)values.size(); ++i) {
-	if (!is_key_field(i)) {
-	  const char *s = values[i].c_str();
-	  log("         values[%d]=%s", i, s);
-	  double d;
-	  chk_exit(sscanf(s, "%lf", &d) == 1, "Couldn't parse number");
-	  log("      non_key_id=%d, r.v_sum.size()=%lu", non_key_id, r.v_sum.size());
-	  if (r.num == 0) {
-	    r.v_sum.push_back(d);
-	    log("         Pushed back: %g", d);
-	    r.v_sqr.push_back(d*d);
-	    r.v_min.push_back(d);
-	    r.v_max.push_back(d);
-            r.v_val.push_back(vector<double>()); // TODO create a vector<double>
-            r.v_val[non_key_id].push_back(d);    // TODO add to vector<double>
-	  } else {
-	    log("         v_sum[non_key_id]=%g, d=%g", r.v_sum[non_key_id], d);
-	    r.v_sum[non_key_id] += d;
-	    log("         New v_sum[non_key_id]=%g", r.v_sum[non_key_id]);
-	    r.v_sqr[non_key_id] += d*d;
-	    r.v_min[non_key_id] = min(r.v_min[non_key_id], d);
-	    r.v_max[non_key_id] = max(r.v_max[non_key_id], d);
-            r.v_val[non_key_id].push_back(d);    // TODO add to vector<double>
-	  }
-	  ++non_key_id;
-	}
-      }
-      ++r.num;
+      accumulate_on(r, values);
     }
     ++num;
   }
