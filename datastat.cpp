@@ -95,10 +95,12 @@ static long parse_fields(char *s) {
   while (tok != NULL) {
     int i1, i2;
     if (sscanf(tok, "%d-%d", &i1, &i2) == 2) {
+      chk_exit(i1 >= 1 && i2 >= 1, "-k expects natural integers >= 1");
       for (int i = i1 - 1; i < i2; ++i) {
 	fields |= (1 << i);
       }
     } else if (sscanf(tok, "%d", &i1) == 1) {
+      chk_exit(i1 >= 1, "-k expects natural integers >= 1");
       fields |= (1 << (i1 - 1));
     } else {
       chk_exit(false, "Wrong syntax for fields argument");
