@@ -26,7 +26,7 @@
 using namespace std;
 
 FILE *fin = stdin;
-const char *delim = " \t";
+const char *delim = " ,\t";
 long key_fields = 0;
 bool show_avg = true;
 bool show_dev = false;
