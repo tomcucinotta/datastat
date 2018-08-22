@@ -113,7 +113,8 @@ void usage() {
   printf("Usage: datastat [options] [filename]\n");
   printf("  Options:\n");
   printf("    -h|--help ....... This help message\n");
-  printf("    --no-avg ........ Suppress average\n");
+  printf("    -k|--key cols ... Specify key columns ('-k 3' or '-k 3,5' or '-k 3-5,7' all work");
+  printf("    -na|--no-avg .... Suppress average\n");
   printf("    -nh|--no-header . Suppress header line\n");
   printf("    --dev ........... Show standard deviation\n");
   printf("    --1qt ........... Show first quartile (include median)\n");
@@ -202,12 +203,12 @@ int main(int argc, char *argv[]) {
     if (strcmp(*argv, "-h") == 0 || strcmp(*argv, "--help") == 0) {
       usage();
       exit(0);
-    } else if (strcmp(*argv, "-k") == 0) {
+    } else if (strcmp(*argv, "-k") == 0 || strcmp(*argv, "--key") == 0) {
       --argc;  ++argv;
       chk_exit(argc > 0, "Option -k requires an argument");
       key_fields = parse_fields(*argv);
       log("Parsed key_fields: %ld", key_fields);
-    } else if (strcmp(*argv, "--no-avg") == 0) {
+    } else if (strcmp(*argv, "-na") == 0 || strcmp(*argv, "--no-avg") == 0) {
       show_avg = false;
     } else if (strcmp(*argv, "-nh") == 0 || strcmp(*argv, "--no-header") == 0) {
       show_header = false;
