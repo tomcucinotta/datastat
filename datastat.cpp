@@ -314,15 +314,17 @@ int main(int argc, char *argv[]) {
     char *line = NULL;
     size_t line_size = 0;
     ssize_t rv;
-    log("   getline(.)");
+    log("   getline()");
     rv = getline(&line, &line_size, fin);
-    if (rv < 0 || line == NULL)
+    if (rv < 0 || line == NULL || strlen(line) == 0)
       break;
     if (line[0] == '#')                     // Can have comments in the file
       continue;
     if (line[strlen(line)-1] == '\n')
 	line[strlen(line)-1] = '\0';
     log("      Read line: %s", line);
+    if (strlen(line) == 0)
+      break;
 
     vector<string> values;                  // vector of token values for current line
     char *ptr = line;
