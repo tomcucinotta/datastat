@@ -216,7 +216,7 @@ static void accumulate_on(record & accum, vector<string> & values) {
       chk_exit(sscanf(s, "%lf", &d) == 1 || use_nan, "Couldn't parse number!");
       if (isnan(d))
 	d = 0.0;
-      log("      non_key_id=%d, r.v_sum.size()=%lu", non_key_id, r.v_sum.size());
+      log("      non_key_id=%d, accum.v_sum.size()=%lu", non_key_id, accum.v_sum.size());
       // d now contains the double value of the read string
       if (accum.num == 0) {
 	// BEWARE: we might be pushing NaN here, it's needed to count the correct number of accumulators
