@@ -127,7 +127,7 @@ void usage() {
   printf("    --cnt ........... Show count of values\n");
   printf("    --sub a,b ....... Show difference of fields a and b\n");
   printf("    --add a,b ....... Show addition of fields a and b\n");
-  printf("    --use-nan ....... Use NaN to tolerate non-numbers in input\n");
+  printf("    --use-nan ....... Tolerate non-numbers in input (assumed to be ZEROes when computing stats)\n");
 }
 
 /* Utility macro */
@@ -214,6 +214,8 @@ static void accumulate_on(record & accum, vector<string> & values) {
       const char *s = values[i].c_str();
       double d = NAN;
       chk_exit(sscanf(s, "%lf", &d) == 1 || use_nan, "Couldn't parse number!");
+      if (isnan(d))
+	d = 0.0;
       log("      non_key_id=%d, r.v_sum.size()=%lu", non_key_id, r.v_sum.size());
       // d now contains the double value of the read string
       if (accum.num == 0) {
