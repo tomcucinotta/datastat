@@ -324,11 +324,12 @@ int main(int argc, char *argv[]) {
     log("      Read line: %s", line);
 
     vector<string> values;                  // vector of token values for current line
-    char *tok = strtok(line, delim);
+    char *ptr = line;
+    char *tok = strsep(&ptr, delim);
     while (tok != NULL) {
       log("      parsed: %s", tok);
       values.push_back(string(tok));
-      tok = strtok(NULL, delim);
+      tok = strsep(&ptr, delim);
     }
     free(line);
 
