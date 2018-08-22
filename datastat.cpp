@@ -21,8 +21,6 @@
 #include <map>
 #include <string>
 
-#define LOG_DEBUG 0
-
 using namespace std;
 
 FILE *fin = stdin;

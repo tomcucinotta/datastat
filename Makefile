@@ -1,7 +1,7 @@
 all: datastat
 
 CXXFLAGS=-O3 -Wall -Wextra
-#CXXFLAGS=-g -Wall -Wextra
+#CXXFLAGS=-g -Wall -Wextra -DLOG_DEBUG=1
 
 datastat: datastat.o
 	g++ -o $@ $^
