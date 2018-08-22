@@ -2,7 +2,7 @@
  * datastat - Easy command-line data statistics
  *
  * Author: Tommaso Cucinotta
- * Copyright 2011-2013
+ * Copyright 2011-2019
  *
  * Quartiles patch contributed by Alan Barton
  * 

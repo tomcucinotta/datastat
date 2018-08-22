@@ -1,5 +1,5 @@
 datastat - Simple command-line data statistics
-           Copyright 2011-2013 by Tommaso Cucinotta
+           Copyright 2011-2019 by Tommaso Cucinotta
            firstname dot lastname at gmail dot com
 ======================================================================
 datastat is an open-source command-line tool that allows one to
