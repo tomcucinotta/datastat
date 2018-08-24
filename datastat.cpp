@@ -24,7 +24,7 @@
 using namespace std;
 
 FILE *fin = stdin;
-const char *delim = " ,\t";
+const char *use_delim = " ,\t";
 long key_fields = 0;
 bool show_avg = true;
 bool show_dev = false;
@@ -39,6 +39,7 @@ bool show_sub = false;
 bool show_add = false;
 bool show_header = true;
 bool use_nan = false;
+const char *use_sep = " ";
 
 int sub_from, sub_to;
 int add_a, add_b;
@@ -129,12 +130,14 @@ void usage() {
   printf("    --sub a,b ....... Show difference of fields a and b\n");
   printf("    --add a,b ....... Show addition of fields a and b\n");
   printf("    --use-nan ....... Tolerate non-numbers in input (assumed to be ZEROes when computing stats)\n");
+  printf("    --sep char ...... Use the specified separator character when formatting output\n");
+  printf("    --delim chars ... Use the specified set of delimiters when parsing input (default ' ,\\t')\n");
 }
 
 /* Utility macro */
 #define printf_sep(msg, args...) do { 		\
 	printf("%s" msg, sep, ##args);		\
-	sep = " ";				\
+	sep = use_sep;				\
       } while (0)
 
 vector<double> slice(const vector<double>& v, int start=0, int end=-1) {
@@ -421,6 +424,14 @@ int main(int argc, char *argv[]) {
       show_add = true;
     } else if (strcmp(*argv, "--use-nan") == 0) {
       use_nan = true;
+    } else if (strcmp(*argv, "--sep") == 0) {
+      --argc;  ++argv;
+      chk_exit(argc > 0, "Option --sep requires a single character as argument");
+      use_sep = *argv;
+    } else if (strcmp(*argv, "--delim") == 0) {
+      --argc;  ++argv;
+      chk_exit(argc > 0, "Option --delim requires an argument");
+      use_delim = *argv;
     } else {
       fin = fopen(*argv, "r");
       chk_exit(fin != 0, "File not found: %s", *argv);
@@ -451,11 +462,11 @@ int main(int argc, char *argv[]) {
 
     vector<string> values;                  // vector of token values for current line
     char *ptr = line;
-    char *tok = strsep(&ptr, delim);
+    char *tok = strsep(&ptr, use_delim);
     while (tok != NULL) {
       log("      parsed: %s", tok);
       values.push_back(string(tok));
-      tok = strsep(&ptr, delim);
+      tok = strsep(&ptr, use_delim);
     }
     free(line);
 
