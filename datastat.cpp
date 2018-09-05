@@ -116,7 +116,7 @@ void usage() {
   printf("Usage: datastat [options] [filename]\n");
   printf("  Options:\n");
   printf("    -h|--help ....... This help message\n");
-  printf("    -k|--key cols ... Specify key columns ('-k 3' or '-k 3,5' or '-k 3-5,7' all work");
+  printf("    -k|--key cols ... Specify key columns ('-k 3' or '-k 3,5' or '-k 3-5,7' all work)\n");
   printf("    -na|--no-avg .... Suppress average\n");
   printf("    -nh|--no-header . Suppress header line\n");
   printf("    --dev ........... Show standard deviation\n");
