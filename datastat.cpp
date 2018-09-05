@@ -130,7 +130,7 @@ void usage() {
   printf("    --sub a,b ....... Show difference of fields a and b\n");
   printf("    --add a,b ....... Show addition of fields a and b\n");
   printf("    --use-nan ....... Tolerate non-numbers in input (assumed to be ZEROes when computing stats)\n");
-  printf("    --sep char ...... Use the specified separator character when formatting output\n");
+  printf("    --sep char ...... Use the specified separator character when formatting output (default ' ')\n");
   printf("    --delim chars ... Use the specified set of delimiters when parsing input (default ' ,\\t')\n");
 }
 
