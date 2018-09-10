@@ -216,11 +216,11 @@ bool calculateMedian(vector<double> vals, double* median, int* medianPosLow, int
    return isEvenNumberOfDataPoints;
 }
 
-static double non_nan_or(double val, double orig1, double orig2) {
-  log("non_nan_or: val=%g, orig1=%g, orig2=%g, isnan(val)=%d", val, orig1, orig2, isnan(val));
-  if (!isnan(val))
+static double finite_or(double val, double orig1, double orig2) {
+  log("finite_or: val=%g, orig1=%g, orig2=%g, isfinite(val)=%d", val, orig1, orig2, isfinite(val));
+  if (isfinite(val))
     return val;
-  else if (!isnan(orig1))
+  else if (isfinite(orig1))
     return orig1;
   return orig2;
 }
@@ -253,7 +253,7 @@ static void accumulate_on(record & accum, vector<string> & values) {
 	// if use_nan is needed to correctly count # of non-NaN values in stats
 	if (use_nan || show_1qt || show_2qt || show_3qt) {
 	  accum.v_val.push_back(vector<double>());
-	  if (!isnan(d)) {
+	  if (isfinite(d)) {
 	    log("pushing back: %g", d);
 	    accum.v_val.back().push_back(d);
 	  }
@@ -261,21 +261,21 @@ static void accumulate_on(record & accum, vector<string> & values) {
       } else {
 	if (show_sum || show_avg || show_dev) {
 	  double v = accum.v_sum[non_key_id] + d;
-	  accum.v_sum[non_key_id] = non_nan_or(v, accum.v_sum[non_key_id], d);
+	  accum.v_sum[non_key_id] = finite_or(v, accum.v_sum[non_key_id], d);
 	}
 	if (show_dev) {
 	  double v = accum.v_sqr[non_key_id] + d*d;
-	  accum.v_sqr[non_key_id] = non_nan_or(v, accum.v_sqr[non_key_id], d*d);
+	  accum.v_sqr[non_key_id] = finite_or(v, accum.v_sqr[non_key_id], d*d);
 	}
 	if (show_min) {
 	  double v = min(accum.v_min[non_key_id], d);
-	  accum.v_min[non_key_id] = non_nan_or(v, accum.v_min[non_key_id], d);
+	  accum.v_min[non_key_id] = finite_or(v, accum.v_min[non_key_id], d);
 	}
 	if (show_max) {
 	  double v = max(accum.v_max[non_key_id], d);
-	  accum.v_max[non_key_id] = non_nan_or(v, accum.v_max[non_key_id], d);
+	  accum.v_max[non_key_id] = finite_or(v, accum.v_max[non_key_id], d);
 	}
-	if (!isnan(d) && (use_nan || show_1qt || show_2qt || show_3qt))
+	if (isfinite(d) && (use_nan || show_1qt || show_2qt || show_3qt))
 	  accum.v_val[non_key_id].push_back(d);
       }
       ++non_key_id;
