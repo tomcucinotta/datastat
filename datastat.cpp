@@ -19,13 +19,14 @@
 #include <algorithm> // for sort
 #include <vector>
 #include <map>
+#include <set>
 #include <string>
 
 using namespace std;
 
 FILE *fin = stdin;
 const char *use_delim = " ,\t";
-long key_fields = 0;
+std::set<int> key_fields;
 bool show_avg = true;
 bool show_dev = false;
 bool show_1qt = false;
@@ -65,7 +66,7 @@ int add_a, add_b;
 
 // f goes from zero
 static bool is_key_field(int f) {
-  return (key_fields & (1 << f)) != 0;
+  return key_fields.find(f) != key_fields.end();
 }
 
 static void log_values(vector<double> const & values) {
@@ -89,8 +90,7 @@ struct record {
   record() : v_sum(), v_sqr(), v_min(), v_max(), v_val(), num(0) {  }
 };
 
-static long parse_fields(char *s) {
-  long fields = 0;
+static void parse_fields(std::set<int> &fields, char *s) {
   char *tok = strtok(s, ",");
   chk_exit(tok != 0, "Wrong syntax for fields argument");
   while (tok != NULL) {
@@ -98,17 +98,30 @@ static long parse_fields(char *s) {
     if (sscanf(tok, "%d-%d", &i1, &i2) == 2) {
       chk_exit(i1 >= 1 && i2 >= 1, "-k expects natural integers >= 1");
       for (int i = i1 - 1; i < i2; ++i) {
-	fields |= (1 << i);
+	fields.insert(i);
       }
     } else if (sscanf(tok, "%d", &i1) == 1) {
       chk_exit(i1 >= 1, "-k expects natural integers >= 1");
-      fields |= (1 << (i1 - 1));
+      fields.insert(i1 - 1);
     } else {
       chk_exit(false, "Wrong syntax for fields argument");
     }
     tok = strtok(NULL, ",");
   }
-  return fields;
+}
+
+static void dump_fields(std::set<int> fields) {
+  bool need_comma = false;
+  for (int i = 0; !fields.empty(); ++i) {
+    if (fields.find(i) != fields.end()) {
+      if (need_comma)
+	log_noln(", %d", i + 1);
+      else
+	log_noln("%d", i + 1);
+      fields.erase(i);
+      need_comma = true;
+    }
+  }
 }
 
 void usage() {
@@ -388,8 +401,10 @@ int main(int argc, char *argv[]) {
     } else if (strcmp(*argv, "-k") == 0 || strcmp(*argv, "--key") == 0) {
       --argc;  ++argv;
       chk_exit(argc > 0, "Option -k requires an argument");
-      key_fields = parse_fields(*argv);
-      log("Parsed key_fields: %ld", key_fields);
+      parse_fields(key_fields, *argv);
+      log("Parsed key_fields: ");
+      dump_fields(key_fields);
+      log_noln("\n");
     } else if (strcmp(*argv, "-na") == 0 || strcmp(*argv, "--no-avg") == 0) {
       show_avg = false;
     } else if (strcmp(*argv, "-nh") == 0 || strcmp(*argv, "--no-header") == 0) {
@@ -470,14 +485,14 @@ int main(int argc, char *argv[]) {
     }
     free(line);
 
-    if (key_fields == 0) {                            // there are no key fields, so we use all data
+    if (key_fields.empty()) {                            // there are no key fields, so we use all data
       accumulate_on(accum, values);
     } else {
       vector<string> key;
       for (int i = 0; i < (int)values.size(); ++i) {
 	if (is_key_field(i)) {
 	  key.push_back(values[i]);
-	  log("      Pushed %s as key field", values[i].c_str());
+	  log("      Pushed %s as key field (i=%d)", values[i].c_str(), i);
 	}
       }
       record &r = accum_map[key];
@@ -519,7 +534,7 @@ int main(int argc, char *argv[]) {
     printf("\n");
   }
 
-  if (key_fields == 0) {
+  if (key_fields.empty()) {
     // use an empty key in this case
     vector<string> key;
     show(key, accum);
