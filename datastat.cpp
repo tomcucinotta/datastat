@@ -295,7 +295,7 @@ static int get_num_cols(record const & r) {
     sz = r.v_max.size();
   else if (show_min)
     sz = r.v_min.size();
-  else if (show_1qt || show_2qt || show_3qt)
+  else if (use_nan || show_1qt || show_2qt || show_3qt)
     sz = r.v_val.size();
   return sz;
 }
