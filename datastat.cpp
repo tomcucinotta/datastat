@@ -287,14 +287,7 @@ static void accumulate_on(record & accum, vector<string> & values) {
   log_values(accum.v_sum);
 }
 
-static void show(vector<string> const & key, record const & r) {
-  log_noln("   v_sum: ");  log_values(r.v_sum);
-  log_noln("   v_sqr: ");  log_values(r.v_sqr);
-  log_noln("   v_min: ");  log_values(r.v_min);
-  log_noln("   v_max: ");  log_values(r.v_max);
-  int key_id = 0;
-  int non_key_id = 0;
-  const char *sep = "";
+static int get_num_cols(record const & r) {
   int sz = 0;
   if (show_sum || show_avg || show_dev)
     sz = r.v_sum.size();
@@ -304,6 +297,18 @@ static void show(vector<string> const & key, record const & r) {
     sz = r.v_min.size();
   else if (show_1qt || show_2qt || show_3qt)
     sz = r.v_val.size();
+  return sz;
+}
+
+static void show(vector<string> const & key, record const & r) {
+  log_noln("   v_sum: ");  log_values(r.v_sum);
+  log_noln("   v_sqr: ");  log_values(r.v_sqr);
+  log_noln("   v_min: ");  log_values(r.v_min);
+  log_noln("   v_max: ");  log_values(r.v_max);
+  int key_id = 0;
+  int non_key_id = 0;
+  const char *sep = "";
+  int sz = get_num_cols(r);
   for (int i = 0; i < int(key.size() + sz); ++i) {
     if (is_key_field(i)) {
       printf_sep("%s", key[key_id].c_str());
@@ -504,32 +509,48 @@ int main(int argc, char *argv[]) {
   log("end of reading and processing file... now output final info");
   if (show_header)  {
     const char *sep = "";
+    int num_cols;
+    if (key_fields.empty())
+      num_cols = get_num_cols(accum);
+    else {
+      auto it = accum_map.begin();
+      num_cols = it->first.size() + get_num_cols(it->second);
+    }
     printf("#");
-    if (show_avg) {
-      printf_sep("avg");
+    for (int i = 0; i < num_cols; ++i) {
+      if (is_key_field(i)) {
+	printf_sep("key%d", i+1);
+	continue;
+      }
+      if (show_avg) {
+	printf_sep("avg%d", i+1);
+      }
+      if (show_dev) {
+	printf_sep("dev%d", i+1);
+      }
+      if (show_1qt) {
+	printf_sep("1qt%d", i+1);
+      }
+      if (show_2qt) {
+	printf_sep("2qt%d", i+1);
+      }
+      if (show_3qt) {
+	printf_sep("3qt%d", i+1);
+      }
+      if (show_min) {
+	printf_sep("min%d", i+1);
+      }
+      if (show_max) {
+	printf_sep("max%d", i+1);
+      }
+      if (show_sum) {
+	printf_sep("sum%d", i+1);
+      }
+      if (use_nan && show_cnt) {
+	printf_sep("cnt%d", i+1);
+      }
     }
-    if (show_dev) {
-      printf_sep("dev");
-    }
-    if (show_1qt) {
-      printf_sep("1qt");
-    }
-    if (show_2qt) {
-      printf_sep("2qt");
-    }
-    if (show_3qt) {
-      printf_sep("3qt");
-    }
-    if (show_min) {
-      printf_sep("min");
-    }
-    if (show_max) {
-      printf_sep("max");
-    }
-    if (show_sum) {
-      printf_sep("sum");
-    }
-    if (show_cnt) {
+    if (!use_nan && show_cnt) {
       printf_sep("cnt");
     }
     printf("\n");
