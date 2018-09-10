@@ -503,33 +503,34 @@ int main(int argc, char *argv[]) {
 
   log("end of reading and processing file... now output final info");
   if (show_header)  {
+    const char *sep = "";
     printf("#");
     if (show_avg) {
-      printf(" avg");
+      printf_sep("avg");
     }
     if (show_dev) {
-      printf(" dev");
+      printf_sep("dev");
     }
     if (show_1qt) {
-      printf(" 1qt");
+      printf_sep("1qt");
     }
     if (show_2qt) {
-      printf(" 2qt");
+      printf_sep("2qt");
     }
     if (show_3qt) {
-      printf(" 3qt");
+      printf_sep("3qt");
     }
     if (show_min) {
-      printf(" min");
+      printf_sep("min");
     }
     if (show_max) {
-      printf(" max");
+      printf_sep("max");
     }
     if (show_sum) {
-      printf(" sum");
+      printf_sep("sum");
     }
     if (show_cnt) {
-      printf(" cnt");
+      printf_sep("cnt");
     }
     printf("\n");
   }
