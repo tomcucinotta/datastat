@@ -250,7 +250,7 @@ static void accumulate_on(record & accum, vector<string> & values) {
 	  accum.v_min.push_back(d);
 	if (show_max)
 	  accum.v_max.push_back(d);
-	// if use_nan is needed to correctly count # of non-NaN values in stats
+	// with use_nan, this is needed to correctly count # of non-NaN values in each columns
 	if (use_nan || show_1qt || show_2qt || show_3qt) {
 	  accum.v_val.push_back(vector<double>());
 	  if (isfinite(d)) {
@@ -362,7 +362,7 @@ static void show(vector<string> const & key, record const & r) {
 	firstQuantilePosLow--;
 	firstQuantilePosHigh++;
       }
-      { // 3rd quartile (including median... so use medianPosHigh)
+      { // 3rd quartile (including median... so use medianPosLow)
 	vector<double> third = slice(alldata, medianPosLow, alldata.size());
 	calculateMedian(third, &thirdQuantile, &thirdQuantilePosLow, &thirdQuantilePosHigh);
       }
