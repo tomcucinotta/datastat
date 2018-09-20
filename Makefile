@@ -1,6 +1,6 @@
 all: datastat
 
-CXXFLAGS=-O3 -Wall -Wextra
+CXXFLAGS=-O3 -Wall -Wextra -std=c++11
 #CXXFLAGS=-g -Wall -Wextra -DLOG_DEBUG=1
 
 datastat: datastat.o
