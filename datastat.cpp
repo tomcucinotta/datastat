@@ -36,14 +36,9 @@ bool show_min = false;
 bool show_max = false;
 bool show_cnt = false;
 bool show_sum = false;
-bool show_sub = false;
-bool show_add = false;
 bool show_header = true;
 bool use_nan = false;
 const char *use_sep = " ";
-
-int sub_from, sub_to;
-int add_a, add_b;
 
 #if LOG_DEBUG
 #define log_noln(fmt, args...) do {	\
@@ -140,9 +135,7 @@ void usage() {
   printf("    --max ........... Show maximum\n");
   printf("    --sum ........... Show sum\n");
   printf("    --cnt ........... Show count of values\n");
-  printf("    --sub a,b ....... Show difference of fields a and b\n");
-  printf("    --add a,b ....... Show addition of fields a and b\n");
-  printf("    --use-nan ....... Tolerate non-numbers in input (assumed to be ZEROes when computing stats)\n");
+  printf("    --use-nan ....... Tolerate non-numbers in input (samples IGNORED when computing stats)\n");
   printf("    --sep char ...... Use the specified separator character when formatting output (default ' ')\n");
   printf("    --delim chars ... Use the specified set of delimiters when parsing input (default ' ,\\t')\n");
 }
@@ -430,18 +423,6 @@ int main(int argc, char *argv[]) {
       show_sum = true;
     } else if (strcmp(*argv, "--cnt") == 0) {
       show_cnt = true;
-    } else if (strcmp(*argv, "--sub") == 0) {
-      --argc;  ++argv;
-      chk_exit(argc > 0, "Option --sub requires two comma-separated fields as argument");
-      chk_exit(sscanf(*argv, "%d,%d", &sub_from, &sub_to) == 2, "Option --sub requires two comma-separated fields as argument");
-      log("Parsed sub_from,sub_to: %d,%d", sub_from, sub_to);
-      show_sub = true;
-    } else if (strcmp(*argv, "--add") == 0) {
-      --argc;  ++argv;
-      chk_exit(argc > 0, "Option --add requires two comma-separated fields as argument");
-      chk_exit(sscanf(*argv, "%d,%d", &add_a, &add_b) == 2, "Option --add requires two comma-separated fields as argument");
-      log("Parsed add_a,add_b: %d,%d", add_a, add_b);
-      show_add = true;
     } else if (strcmp(*argv, "--use-nan") == 0) {
       use_nan = true;
     } else if (strcmp(*argv, "--sep") == 0) {
