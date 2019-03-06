@@ -457,7 +457,7 @@ int main(int argc, char *argv[]) {
       continue;
     if (line[strlen(line)-1] == '\n')
 	line[strlen(line)-1] = '\0';
-    log("      Read line: %s", line);
+    log("      Read line: '%s'", line);
 
     vector<string> values;                  // vector of token values for current line
     char *ptr = line;
