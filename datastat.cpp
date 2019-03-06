@@ -229,7 +229,7 @@ static void accumulate_on(record & accum, vector<string> & values) {
     if (!is_key_field(i)) {
       const char *s = values[i].c_str();
       double d = NAN;
-      chk_exit((sscanf(s, "%lf", &d) == 1 && isfinite(d)) || use_nan, "Couldn't parse number: %s!", s);
+      chk_exit(((sscanf(s, "%lf", &d) == 1 || sscanf(s, "\"%lf\"", &d) == 1) && isfinite(d)) || use_nan, "Couldn't parse number: %s!", s);
       log("      non_key_id=%d, accum.v_sum.size()=%lu", non_key_id, accum.v_sum.size());
       // d now contains the double value of the read string
       if (accum.num == 0) {
