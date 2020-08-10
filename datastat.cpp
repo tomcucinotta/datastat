@@ -39,6 +39,7 @@ bool show_sum = false;
 bool show_header = true;
 bool use_nan = false;
 const char *use_sep = " ";
+const char *out_fmt = "%g";
 
 #if LOG_DEBUG
 #define log_noln(fmt, args...) do {	\
@@ -123,26 +124,28 @@ void usage() {
   printf("Source available from: git://git.code.sf.net/p/datastat/code\n");
   printf("Usage: datastat [options] [filename]\n");
   printf("  Options:\n");
-  printf("    -h|--help ....... This help message\n");
-  printf("    -k|--key cols ... Specify key columns ('-k 3' or '-k 3,5' or '-k 3-5,7' all work)\n");
-  printf("    -na|--no-avg .... Suppress average\n");
-  printf("    -nh|--no-header . Suppress header line\n");
-  printf("    --dev ........... Show standard deviation\n");
-  printf("    --1qt ........... Show first quartile (include median)\n");
-  printf("    --2qt|--med ..... Show second quartile (i.e. median)\n");
-  printf("    --3qt ........... Show third quartile (include median)\n");
-  printf("    --min ........... Show minimum\n");
-  printf("    --max ........... Show maximum\n");
-  printf("    --sum ........... Show sum\n");
-  printf("    --cnt ........... Show count of values\n");
-  printf("    --use-nan ....... Tolerate non-numbers in input (samples IGNORED when computing stats)\n");
-  printf("    --sep char ...... Use the specified separator character when formatting output (default ' ')\n");
-  printf("    --delim chars ... Use the specified set of delimiters when parsing input (default ' ,\\t')\n");
+  printf("    -h|--help ......... This help message\n");
+  printf("    -k|--key cols ..... Specify key columns ('-k 3' or '-k 3,5' or '-k 3-5,7' all work)\n");
+  printf("    -na|--no-avg ...... Suppress average\n");
+  printf("    -nh|--no-header ... Suppress header line\n");
+  printf("    --dev ............. Show standard deviation\n");
+  printf("    --1qt ............. Show first quartile (include median)\n");
+  printf("    --2qt|--med ....... Show second quartile (i.e. median)\n");
+  printf("    --3qt ............. Show third quartile (include median)\n");
+  printf("    --min ............. Show minimum\n");
+  printf("    --max ............. Show maximum\n");
+  printf("    --sum ............. Show sum\n");
+  printf("    --cnt ............. Show count of values\n");
+  printf("    --use-nan ......... Tolerate non-numbers in input (samples IGNORED when computing stats)\n");
+  printf("    --sep char ........ Use the specified separator character when formatting output (default ' ')\n");
+  printf("    --delim chars ..... Use the specified set of delimiters when parsing input (default ' ,\\t')\n");
+  printf("    -of|--out-fmt fmt . Use the specified output format for numeric values (default '%%g')\n");
 }
 
 /* Utility macro */
 #define printf_sep(msg, args...) do { 		\
-	printf("%s" msg, sep, ##args);		\
+	printf("%s", sep);			\
+	printf(msg, ##args);			\
 	sep = use_sep;				\
       } while (0)
 
@@ -361,22 +364,22 @@ static void show(vector<string> const & key, record const & r) {
       }
     }
     if (show_1qt) {
-      printf_sep("%g", firstQuantile);
+      printf_sep(out_fmt, firstQuantile);
     }
     if (show_2qt) {
-      printf_sep("%g", median);
+      printf_sep(out_fmt, median);
     }
     if (show_3qt) {
-      printf_sep("%g", thirdQuantile);
+      printf_sep(out_fmt, thirdQuantile);
     }
     if (show_min) {
-      printf_sep("%g", r.v_min[non_key_id]);
+      printf_sep(out_fmt, r.v_min[non_key_id]);
     }
     if (show_max) {
-      printf_sep("%g", r.v_max[non_key_id]);
+      printf_sep(out_fmt, r.v_max[non_key_id]);
     }
     if (show_sum) {
-      printf_sep("%g", r.v_sum[non_key_id]);
+      printf_sep(out_fmt, r.v_sum[non_key_id]);
     }
     if (use_nan && show_cnt) {
       printf_sep("%lu", num);
@@ -433,6 +436,10 @@ int main(int argc, char *argv[]) {
       --argc;  ++argv;
       chk_exit(argc > 0, "Option --delim requires an argument");
       use_delim = *argv;
+    } else if (strcmp(*argv, "-of") == 0 || strcmp(*argv, "--out-fmt") == 0) {
+      --argc;  ++argv;
+      chk_exit(argc > 0, "Option -of|--out-fmt requires a printf-style number-format argument");
+      out_fmt = *argv;
     } else {
       fin = fopen(*argv, "r");
       chk_exit(fin != 0, "File not found: %s", *argv);
