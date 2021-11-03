@@ -52,4 +52,4 @@ datastat in combination with said tools in a GNUplot plotting script.
 License of use
 ======================================================================
 datastat is provided under the GPLv3 license. See LICENSE.txt for
-details.
+further details.
